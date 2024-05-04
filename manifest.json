@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+    "name": "SubDL.com",
+    "version": "1.0",
+    "permissions": ["storage", "tabs", "activeTab", "scripting"],
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [
+      {
+        "matches": ["*://*.imdb.com/*"],
+        "js":  ["zip.min.js"]
+      }
+    ]
+  }
