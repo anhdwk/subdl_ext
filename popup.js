@@ -72,7 +72,7 @@ function createSubtitleList(subtitles) {
     const listItem = document.createElement("li");
     const link = document.createElement("a");
     link.href = "#";
-    link.textContent = subtitle.release_name;
+    link.textContent = subtitle.release_name + " - " + subtitle.author;
     link.onclick = function () {
       fetch(`https://dl.subdl.com${subtitle.url}`)
         .then((response) => response.blob())
