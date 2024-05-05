@@ -36,35 +36,35 @@ function getImdbId(url) {
   return match ? match[0] : null;
 }
 
-function fetchSubtitles(imdbId, seasonPath) {
+async function fetchSubtitles(imdbId, seasonPath) {
+  const body = document.body;
   const spinner = document.getElementById("spinner");
+  body.classList.add("loading");
   spinner.style.display = "block";
   const cachedSubtitles = getWithExpiry(imdbId);
   if (cachedSubtitles) {
-    createSubtitleList(cachedSubtitles);
-    spinner.style.display = "none";
+    createSubtitleList(cachedSubtitles, body);
   } else {
-    const apiUrl = `https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&languages=vi&imdb_id=${imdbId}${seasonPath}`;
-    fetch(apiUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        spinner.style.display = "none";
-        if (data.status === true && data.subtitles.length > 0) {
-          setWithExpiry(imdbId, data.subtitles);
-          createSubtitleList(data.subtitles);
-        } else {
-          window.close();
-        }
-
-      })
-      .catch((error) => {
-        spinner.style.display = "none";
-        alert("Error:", error);
-      });
+    try {
+      const apiUrl = `https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&languages=vi&imdb_id=${imdbId}${seasonPath}`;
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      if (data.status === true && data.subtitles.length > 0) {
+        setWithExpiry(imdbId, data.subtitles);
+        createSubtitleList(data.subtitles, body);
+      } else {
+        window.close();
+      }
+    } catch (error) {
+      alert("Error:", error);
+    } finally {
+      spinner.style.display = "none";
+    }
   }
 }
 
-function createSubtitleList(subtitles) {
+function createSubtitleList(subtitles, body) {
+  body.classList.remove("loading");
   const list = document.getElementById("subtitles");
   list.innerHTML = "";
   const sortedSubtitles = sortSubtitlesByQuality(subtitles);
@@ -73,19 +73,21 @@ function createSubtitleList(subtitles) {
     const link = document.createElement("a");
     link.href = "#";
     link.textContent = subtitle.release_name + " - " + subtitle.author;
-    link.onclick = function () {
-      fetch(`https://dl.subdl.com${subtitle.url}`)
-        .then((response) => response.blob())
-        .then((blob) => {
-          extractZipFile(blob);
-        })
-        .catch((error) => alert("Error:", error));
-      return false;
-    };
+    link.onclick = () => fetchSubtitleFile(subtitle.url);
     listItem.appendChild(link);
     list.appendChild(listItem);
   });
   list.style.width = "max-content";
+}
+
+async function fetchSubtitleFile(url) {
+  try {
+    const response = await fetch(`https://dl.subdl.com${url}`);
+    const blob = await response.blob();
+    extractZipFile(blob);
+  } catch (error) {
+    alert("Error:", error);
+  }
 }
 
 function retrieveJsonld() {
@@ -145,9 +147,9 @@ function getQualityScore(release_name) {
 
   if (release_name.includes("BluRay") || release_name.includes("Blu-ray")) {
     score += 400;
-  } else if (release_name.includes("WEB-DL")) {
+  } else if (release_name.includes("WEB-DL") || release_name.includes("WEB")) {
     score += 300;
-  } else if (release_name.includes("WEB-Rip")) {
+  } else if (release_name.includes("WEB-Rip") || release_name.includes("WEBRip")) {
     score += 200;
   } else {
     score += 100;
